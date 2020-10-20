@@ -35,14 +35,6 @@ class WC_Mundipagg_API {
 		$this->method  = $method;
 	}
 
-	/**
-	 * Get the WSDL URL.
-	 *
-	 * @return string
-	 */
-	protected function get_wsdl_url() {
-		return 'https://' . sanitize_text_field( $this->gateway->environment ) . '.mundipaggone.com/mundipaggservice.svc?wsdl';
-	}
 
 	/**
 	 * Check the environment.
@@ -65,16 +57,7 @@ class WC_Mundipagg_API {
 	 */
 	public function get_supported_currencies() {
 		return apply_filters( 'woocommerce_mundipagg_supported_currencies', array(
-			'ARS',
-			'BOB',
 			'BRL',
-			'CLP',
-			'COP',
-			'MXN',
-			'PYG',
-			'UYU',
-			'EUR',
-			'USD'
 		) );
 	}
 

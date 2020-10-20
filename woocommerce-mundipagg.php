@@ -5,7 +5,7 @@
  * Description: MundiPagg gateway for WooCommerce
  * Author: Claudio Sanches
  * Author URI: https://claudiosanches.com/
- * Version: 2.2.0
+ * Version: 3.0.0
  * License: GPLv2 or later
  * Text Domain: woocommerce-mundipagg
  * Domain Path: /languages/
@@ -29,7 +29,7 @@ class WC_Mundipagg {
 	 *
 	 * @var string
 	 */
-	const VERSION = '2.2.0';
+	const VERSION = '3.0.0';
 
 	/**
 	 * Instance of this class.
@@ -40,17 +40,14 @@ class WC_Mundipagg {
 
 	/**
 	 * Initialize the plugin actions.
+	 *
+	 *
 	 */
 	private function __construct() {
-		// Load plugin text domain
 		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
-		add_action( 'init', array( __CLASS__, 'add_return_endpoint' ), 0 );
-
-		if ( class_exists( 'SoapClient' ) && class_exists( 'WC_Payment_Gateway' ) && class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
+		if (class_exists( 'WC_Payment_Gateway' ) && class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
 			$this->includes();
-
 			add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
-			add_action( 'parse_request', array( $this, 'handle_return_requests' ), 0 );
 			add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'plugin_action_links' ) );
 		} else {
 			add_action( 'admin_notices', array( $this, 'missing_dependencies_notice' ) );
@@ -100,7 +97,8 @@ class WC_Mundipagg {
 	public function add_gateway( $methods ) {
 		$methods[] = 'WC_Mundipagg_Banking_Ticket_Gateway';
 		$methods[] = 'WC_Mundipagg_Credit_Card_Gateway';
-
+		$methods[] = 'WC_Mundipagg_Debit_Card_Gateway';
+		$methods[] = 'WC_Mundipagg_Voucher_Gateway';
 		return $methods;
 	}
 
@@ -111,6 +109,8 @@ class WC_Mundipagg {
 		include_once 'includes/class-wc-mundipagg-api.php';
 		include_once 'includes/class-wc-mundipagg-banking-ticket-gateway.php';
 		include_once 'includes/class-wc-mundipagg-credit-card-gateway.php';
+		include_once 'includes/class-wc-mundipagg-debit-gateway.php';
+		include_once 'includes/class-wc-mundipagg-voucher-gateway.php';
 	}
 
 	/**
@@ -119,31 +119,19 @@ class WC_Mundipagg {
 	 * @return string
 	 */
 	public function missing_dependencies_notice() {
-		if ( ! class_exists( 'SoapClient' ) ) {
-			include_once 'includes/admin/views/html-notice-missing-soap-client.php';
-		}
-
 		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
-			include_once 'includes/admin/views/html-notice-missing-soap-client.php';
+			include_once 'includes/admin/views/html-notice-missing-woocommerce.php';
 		}
 
 		if ( ! class_exists( 'Extra_Checkout_Fields_For_Brazil' ) ) {
-			include_once 'includes/admin/views/html-notice-missing-soap-client.php';
+			include_once 'includes/admin/views/html-notice-missing-ecfb.php';
 		}
-	}
-
-	/**
-	 * Created the return endpoint.
-	 */
-	public static function add_return_endpoint() {
-		add_rewrite_endpoint( 'wc-mundipagg-return', EP_ROOT );
 	}
 
 	/**
 	 * Plugin activate method.
 	 */
 	public static function activate() {
-		self::add_return_endpoint();
 
 		add_option( 'wc_mundipagg_version_on_install', WC_Mundipagg::VERSION );
 
@@ -158,40 +146,6 @@ class WC_Mundipagg {
 	}
 
 	/**
-	 * Handle with return requests.
-	 */
-	public function handle_return_requests() {
-		global $wp;
-
-		// wc-mundipagg-return endpoint requests
-		if ( isset( $wp->query_vars['wc-mundipagg-return'] ) || isset( $_GET['wc-mundipagg-return'] ) ) {
-			ob_start();
-
-			if ( isset( $_POST['xmlStatusNotification'] ) ) {
-				try {
-					$data = html_entity_decode( urldecode( $_POST['xmlStatusNotification'] ) );
-					$xml  = @new SimpleXMLElement( $data, LIBXML_NOCDATA );
-
-					// Banking ticket.
-					if ( isset( $xml->BoletoTransaction ) ) {
-						WC_Mundipagg_API::notification_handler( $xml, 'banking-ticket' );
-					}
-
-					// Credit card.
-					if ( isset( $xml->CreditCardTransaction ) ) {
-						WC_Mundipagg_API::notification_handler( $xml, 'credit-card' );
-					}
-				} catch ( Exception $e ) {
-					wp_die( __( 'Invalid return data', 'woocommerce-mundipagg' ), __( 'Invalid return data', 'woocommerce-mundipagg' ), array( 'response' => 400 ) );
-				}
-			}
-
-			ob_end_clean();
-			die( '1' );
-		}
-	}
-
-	/**
 	 * Action links.
 	 *
 	 * @param  array $links
@@ -200,10 +154,10 @@ class WC_Mundipagg {
 	 */
 	public function plugin_action_links( $links ) {
 		$plugin_links = array();
-
 		$plugin_links[] = '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_mundipagg_banking_ticket_gateway' ) ) . '">' . __( 'Banking Ticket Settings', 'woocommerce-mundipagg' ) . '</a>';
-
 		$plugin_links[] = '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_mundipagg_credit_card_gateway' ) ) . '">' . __( 'Credit Card Settings', 'woocommerce-mundipagg' ) . '</a>';
+		$plugin_links[] = '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_mundipagg_debit_card_gateway' ) ) . '">' . __( 'Debit Card Settings', 'woocommerce-mundipagg' ) . '</a>';
+		$plugin_links[] = '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=wc_mundipagg_voucher_gateway' ) ) . '">' . __( 'Voucher Settings', 'woocommerce-mundipagg' ) . '</a>';
 
 		return array_merge( $plugin_links, $links );
 	}

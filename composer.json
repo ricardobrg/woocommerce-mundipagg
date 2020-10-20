@@ -1,0 +1,38 @@
+{
+	"name": "woocommerce/mundipagg",
+	"type": "library",
+	"description": "Mundipagg WooCommerce Plugin",
+	"keywords": ["MundiAPI","API","SDK","WooCommerce, MundiPagg"],
+	"homepage": "https://br.wordpress.org/plugins/woocommerce-mundipagg/",
+	"license": "GPL",
+	"authors": [
+			{
+					"name": "Claudio Sanches",
+					"homepage": "https://claudiosanches.com",
+					"role": "Developer"
+			},
+			{
+				"name": "Ricardo Gonçalves",
+				"homepage": "https://brgweb.com.br",
+				"role": "Developer"
+		}
+	],
+	"repositories": [
+		{
+			"type": "vcs",
+			"url" : "https://github.com/mundipagg/MundiAPI-PHP.git",
+			"reference" : "master"
+		}
+	],
+	"require": {
+			"mundipagg/mundiapi": "^3.1.14"
+	},
+	"require-dev": {
+			"automattic/jetpack-autoloader": "^1"
+	},
+	"autoload": {
+			"psr-4": {
+					"WC_MundiPagg\\": "src/WC_MundiPagg"
+			}
+	}
+}
